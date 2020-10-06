@@ -41,7 +41,7 @@ namespace InvokeSsrsDotnetCore
             ReportExecutionServiceSoapClient client = GetClient(binding, endpointAddress, settings.CredentialSettings);
             var trustedHeader = new TrustedUserHeader();
 
-            var response = await client.LoadReportAsync(trustedHeader, settings.ReportSettings.Path, string.Empty);
+            var response = await client.LoadReportAsync(trustedHeader, settings.ReportSettings.Path, null);
 
             //TODO: Your parameters go here
             var reportParams = new List<ParameterValue>();
