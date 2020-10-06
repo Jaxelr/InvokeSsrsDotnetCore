@@ -5,37 +5,49 @@ using System.ServiceModel;
 using System.ServiceModel.Channels;
 using System.Threading.Tasks;
 using InvokeSsrsDotnetCore.Models.Config;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using SSRS;
 
 namespace InvokeSsrsDotnetCore
 {
     internal static class Program
     {
-        //TODO: Change as needed
+        //TODO: Change language as needed
         private const string Language = "en-US";
 
         private static async Task Main(string[] args)
         {
-            var stubSettings = new AppSettings();
+            IConfiguration config = new ConfigurationBuilder()
+                .AddJsonFile("appsettings.json", true, true)
+                .Build();
 
-            await Execute(stubSettings);
+            //Extract the AppSettings information from the appsettings config.
+            var settings = new AppSettings();
+            config.GetSection(nameof(AppSettings)).Bind(settings);
+
+            var serviceProvider = new ServiceCollection()
+             .AddSingleton(settings)
+             .BuildServiceProvider();
+
+            await Execute(settings);
         }
 
         private static async Task Execute(AppSettings settings)
         {
             var binding = GetBinding();
-            var endpointAddress = new EndpointAddress(settings.ReportConfig.Url);
+            var endpointAddress = new EndpointAddress(settings.ReportSettings.Url);
 
-            ReportExecutionServiceSoapClient client = GetClient(binding, endpointAddress, settings.ReportCredentials);
+            ReportExecutionServiceSoapClient client = GetClient(binding, endpointAddress, settings.CredentialSettings);
             var trustedHeader = new TrustedUserHeader();
 
-            var response = await client.LoadReportAsync(trustedHeader, settings.ReportConfig.Path, string.Empty);
+            var response = await client.LoadReportAsync(trustedHeader, settings.ReportSettings.Path, string.Empty);
 
             //TODO: Your parameters go here
             var reportParams = new List<ParameterValue>();
 
             await client.SetExecutionParametersAsync(response.ExecutionHeader, trustedHeader, reportParams.ToArray(), Language);
-            var renderReport = await RenderReportAsync(client, response.ExecutionHeader, trustedHeader, settings.ReportConfig);
+            var renderReport = await RenderReportAsync(client, response.ExecutionHeader, trustedHeader, settings.ReportSettings);
 
             //TODO: Your output location goes here
             using var fs = File.OpenWrite("c:\\temp\\output.pdf");

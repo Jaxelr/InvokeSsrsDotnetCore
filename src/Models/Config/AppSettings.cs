@@ -2,8 +2,8 @@
 {
     public class AppSettings
     {
-        public Report ReportConfig { get; set; }
-        public Credential ReportCredentials { get; set; }
+        public Report ReportSettings { get; set; }
+        public Credential CredentialSettings { get; set; }
     }
 
     public class Credential
