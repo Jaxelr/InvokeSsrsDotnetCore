@@ -16,7 +16,7 @@ namespace InvokeSsrsDotnetCore
         //TODO: Change language as needed
         private const string Language = "en-US";
 
-        private static async Task Main(string[] args)
+        private static async Task Main()
         {
             IConfiguration config = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json", true, true)
@@ -62,7 +62,7 @@ namespace InvokeSsrsDotnetCore
             binding.Security.Mode = BasicHttpSecurityMode.None;
             binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Windows;
 
-            //This is a vintage wcf issue of max size that we can resolve by props
+            //This is a vintage wcf issue of max size that we can resolve by maxxing props, use wisely
             binding.MaxReceivedMessageSize = 2_147_483_647;
             binding.MaxBufferPoolSize = 2_147_483_647;
             binding.MaxBufferSize = 2_147_483_647;
@@ -84,11 +84,11 @@ namespace InvokeSsrsDotnetCore
         private static NetworkCredential GetCredential(Credential credential) => new NetworkCredential(credential.User, credential.Password, credential.Domain);
 
         private static async Task<RenderResponse> RenderReportAsync
-            (
-                ReportExecutionServiceSoapClient client,
-                ExecutionHeader header,
-                TrustedUserHeader userHeader, Report report
-            )
+        (
+            ReportExecutionServiceSoapClient client,
+            ExecutionHeader header,
+            TrustedUserHeader userHeader, Report report
+        )
         {
             string deviceInfo = $"<DeviceInfo><PageHeight>{report.Height}</PageHeight><PageWidth>{report.Width}</PageWidth><PrintDpiX>300</PrintDpiX><PrintDpiY>300</PrintDpiY></DeviceInfo>";
 
