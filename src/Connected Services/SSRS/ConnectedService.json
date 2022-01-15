@@ -3,7 +3,7 @@
   "Version": "15.0.40203.910",
   "ExtendedData": {
     "inputs": [
-      "../../../../../Users/jaxel/Reporting-Services-2005.wsdl"
+      "Reporting-Services-2005.wsdl"
     ],
     "collectionTypes": [
       "System.Array",
@@ -12,7 +12,7 @@
     "namespaceMappings": [
       "*, SSRS"
     ],
-    "targetFramework": "netcoreapp3.1",
+    "targetFramework": "net6.0",
     "typeReuseMode": "All"
   }
 }
