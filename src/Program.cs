@@ -7,94 +7,84 @@ using System.Threading.Tasks;
 using InvokeSsrsDotnetCore.Models.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using SSRS;
 
-namespace InvokeSsrsDotnetCore
+//TODO: Change language as needed
+const string Language = "en-US";
+var settings = new AppSettings();
+
+var builder = Host.CreateDefaultBuilder(args).ConfigureServices((ctx, services) =>
 {
-    internal static class Program
-    {
-        //TODO: Change language as needed
-        private const string Language = "en-US";
+    //Extract the AppSettings information from the appsettings config.
+    ctx.Configuration.GetSection(nameof(AppSettings)).Bind(settings);
+    services.AddSingleton(settings);
+});
 
-        private static async Task Main()
-        {
-            IConfiguration config = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", true, true)
-                .Build();
+var app = builder.Build();
 
-            //Extract the AppSettings information from the appsettings config.
-            var settings = new AppSettings();
-            config.GetSection(nameof(AppSettings)).Bind(settings);
+await Execute(app.Services.GetRequiredService<AppSettings>());
 
-            var serviceProvider = new ServiceCollection()
-             .AddSingleton(settings)
-             .BuildServiceProvider();
+static async Task Execute(AppSettings settings)
+{
+    var binding = GetBinding();
+    var endpointAddress = new EndpointAddress(settings.ReportSettings.Url);
 
-            await Execute(settings);
-        }
+    ReportExecutionServiceSoapClient client = GetClient(binding, endpointAddress, settings.CredentialSettings);
+    var trustedHeader = new TrustedUserHeader();
 
-        private static async Task Execute(AppSettings settings)
-        {
-            var binding = GetBinding();
-            var endpointAddress = new EndpointAddress(settings.ReportSettings.Url);
+    var response = await client.LoadReportAsync(trustedHeader, settings.ReportSettings.Path, null);
 
-            ReportExecutionServiceSoapClient client = GetClient(binding, endpointAddress, settings.CredentialSettings);
-            var trustedHeader = new TrustedUserHeader();
+    //TODO: Your parameters go here
+    var reportParams = new List<ParameterValue>();
 
-            var response = await client.LoadReportAsync(trustedHeader, settings.ReportSettings.Path, null);
+    await client.SetExecutionParametersAsync(response.ExecutionHeader, trustedHeader, reportParams.ToArray(), Language);
+    var renderReport = await RenderReportAsync(client, response.ExecutionHeader, trustedHeader, settings.ReportSettings);
 
-            //TODO: Your parameters go here
-            var reportParams = new List<ParameterValue>();
+    //TODO: Your output location goes here
+    using var fs = File.OpenWrite("c:\\temp\\output.pdf");
+    fs.Write(renderReport.Result);
+}
 
-            await client.SetExecutionParametersAsync(response.ExecutionHeader, trustedHeader, reportParams.ToArray(), Language);
-            var renderReport = await RenderReportAsync(client, response.ExecutionHeader, trustedHeader, settings.ReportSettings);
+static Binding GetBinding()
+{
+    var binding = new BasicHttpBinding();
 
-            //TODO: Your output location goes here
-            using var fs = File.OpenWrite("c:\\temp\\output.pdf");
-            fs.Write(renderReport.Result);
-        }
+    //TODO: Use your server configuration for SSRS here...
+    binding.Security.Mode = BasicHttpSecurityMode.None;
+    binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Windows;
 
-        private static Binding GetBinding()
-        {
-            var binding = new BasicHttpBinding();
+    //This is a vintage wcf issue of max size that we can resolve by maxxing props, use wisely
+    binding.MaxReceivedMessageSize = 2_147_483_647;
+    binding.MaxBufferPoolSize = 2_147_483_647;
+    binding.MaxBufferSize = 2_147_483_647;
 
-            //TODO: Use your server configuration for SSRS here...
-            binding.Security.Mode = BasicHttpSecurityMode.None;
-            binding.Security.Transport.ClientCredentialType = HttpClientCredentialType.Windows;
+    return binding;
+}
 
-            //This is a vintage wcf issue of max size that we can resolve by maxxing props, use wisely
-            binding.MaxReceivedMessageSize = 2_147_483_647;
-            binding.MaxBufferPoolSize = 2_147_483_647;
-            binding.MaxBufferSize = 2_147_483_647;
+static ReportExecutionServiceSoapClient GetClient(Binding binding, EndpointAddress endpoint, Credential credential)
+{
+    var client = new ReportExecutionServiceSoapClient(binding, endpoint);
 
-            return binding;
-        }
+    //TODO: Use your own credential logic
+    client.ClientCredentials.Windows.AllowedImpersonationLevel = System.Security.Principal.TokenImpersonationLevel.Impersonation;
+    client.ClientCredentials.Windows.ClientCredential = GetCredential(credential);
 
-        private static ReportExecutionServiceSoapClient GetClient(Binding binding, EndpointAddress endpoint, Credential credential)
-        {
-            var client = new ReportExecutionServiceSoapClient(binding, endpoint);
+    return client;
+}
 
-            //TODO: Use your own credential logic
-            client.ClientCredentials.Windows.AllowedImpersonationLevel = System.Security.Principal.TokenImpersonationLevel.Impersonation;
-            client.ClientCredentials.Windows.ClientCredential = GetCredential(credential);
+static NetworkCredential GetCredential(Credential credential) => new(credential.User, credential.Password, credential.Domain);
 
-            return client;
-        }
+static async Task<RenderResponse> RenderReportAsync
+(
+    ReportExecutionServiceSoapClient client,
+    ExecutionHeader header,
+    TrustedUserHeader userHeader, Report report
+)
+{
+    string deviceInfo = $"<DeviceInfo><PageHeight>{report.Height}</PageHeight><PageWidth>{report.Width}</PageWidth><PrintDpiX>300</PrintDpiX><PrintDpiY>300</PrintDpiY></DeviceInfo>";
 
-        private static NetworkCredential GetCredential(Credential credential) => new NetworkCredential(credential.User, credential.Password, credential.Domain);
+    var request = new RenderRequest(header, userHeader, report.Format, deviceInfo);
 
-        private static async Task<RenderResponse> RenderReportAsync
-        (
-            ReportExecutionServiceSoapClient client,
-            ExecutionHeader header,
-            TrustedUserHeader userHeader, Report report
-        )
-        {
-            string deviceInfo = $"<DeviceInfo><PageHeight>{report.Height}</PageHeight><PageWidth>{report.Width}</PageWidth><PrintDpiX>300</PrintDpiX><PrintDpiY>300</PrintDpiY></DeviceInfo>";
-
-            var request = new RenderRequest(header, userHeader, report.Format, deviceInfo);
-
-            return await client.RenderAsync(request);
-        }
-    }
+    return await client.RenderAsync(request);
 }
