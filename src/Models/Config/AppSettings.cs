@@ -1,23 +1,23 @@
 ﻿namespace InvokeSsrsDotnetCore.Models.Config;
 
-public class AppSettings
+public record AppSettings
 {
-    public Report ReportSettings { get; set; }
-    public Credential CredentialSettings { get; set; }
+    public Report ReportSettings { get; init; }
+    public Credential CredentialSettings { get; init; }
 }
 
-public class Credential
+public record Credential
 {
-    public string Domain { get; set; }
-    public string User { get; set; }
-    public string Password { get; set; }
+    public string Domain { get; init; }
+    public string User { get; init; }
+    public string Password { get; init; }
 }
 
-public class Report
+public record Report
 {
-    public string Url { get; set; }
-    public string Path { get; set; }
-    public string Width { get; set; }
-    public string Height { get; set; }
-    public string Format { get; set; }
+    public string Url { get; init; }
+    public string Path { get; init; }
+    public string Width { get; init; }
+    public string Height { get; init; }
+    public string Format { get; init; }
 }
