@@ -79,7 +79,8 @@ static async Task<RenderResponse> RenderReportAsync
 (
     ReportExecutionServiceSoapClient client,
     ExecutionHeader header,
-    TrustedUserHeader userHeader, Report report
+    TrustedUserHeader userHeader,
+    Report report
 )
 {
     string deviceInfo = $"<DeviceInfo><PageHeight>{report.Height}</PageHeight><PageWidth>{report.Width}</PageWidth><PrintDpiX>300</PrintDpiX><PrintDpiY>300</PrintDpiY></DeviceInfo>";
